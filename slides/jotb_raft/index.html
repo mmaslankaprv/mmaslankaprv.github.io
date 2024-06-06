@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name='robots' content='noindex,nofollow'/>
+
+    <title>Raft made live in Redpanda</title>
+
+    <link rel="stylesheet" href="../../dist/reset.css">
+    <link rel="stylesheet" href="../../dist/reveal.css">
+    <link rel="stylesheet" href="../../dist/theme/redpanda.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+
+    <!-- Theme used for syntax highlighted code -->
+    <link rel="stylesheet" href="../../plugin/highlight/monokai.css">
+    <link rel="icon" type="image/x-icon" href="./assets/favicon-32.png">
+
+</head>
+
+<body>
+    <div class="reveal">
+        <div class="slides">
+            <section data-background-color="rgb(47,44,44)" data-background-image="assets/paxos.jpeg" data-state="dim">
+                <h2>Raft made live in Redpanda</h2>
+                <img class="r-stretch" src="assets/raft-panda.png">
+            </section>
+            <section data-background-image="assets/ballot.png">
+            </section>
+            <section>
+                <h3>Agenda</h3>
+
+                <h4 class="horizontal-separator">Raft fundamentals</h4>
+
+                <p style="text-align: left; padding-left: 1em">- What is Raft </p>
+                <p style="text-align: left; padding-left: 1em">- How it works</p>
+
+                <h4 class="horizontal-separator">Story of Raft in Redpanda</h4>
+                <p style="text-align: left; padding-left: 1em">- Multiple Raft Groups</p>
+                <p style="text-align: left; padding-left: 1em">- Reconfiguration</p>
+                <p style="text-align: left; padding-left: 1em">- Performance</p>
+
+
+            </section>
+            <section data-background-image="assets/avatar_bg.jpg" data-background-color="rgb(0,0,0)" data-state="dim">
+                <h3>Michał Maślanka</h3>
+
+                <img data-src="assets/panda_dev.jpg" class=" r-frame r-stretch">
+
+                <h5>Software Engineer in Redpanda Data</h5>
+                <p><i class="fa fa-twitter"></i> @MaslankaMichal</p>
+                <p><i class="fa fa-envelope"></i> michal@redpanda.com</p>
+
+            </section>
+            <section>
+                <img class='r-stretch' src="assets/annie-solo.png">
+                <aside class="background-bar">
+                    <h3>Raft fundamentals</h3>
+                </aside>
+                <aside class="notes">
+                    Let's jump right into Raft protocol fundamentals
+                </aside>
+            </section>
+            <section>
+                <h3>What is Raft ?</h3>
+                <img class="r-stretch" data-src="assets/raft_components.png">
+            </section>
+            <section>
+                <h3>Number of Raft replicas</h3>
+                \[
+                \begin{aligned}
+                R = 2f+1
+                \end{aligned}
+                \]
+                <p style="font-size: 70%;">$f$ - number of crash failures</p>
+                <img data-src="assets/raft_failure.png" class="r-stretch">
+
+            </section>
+            <section>
+                <h3>Majority</h3>
+                \[\begin{aligned}
+                M = \lfloor \frac{R}{2} \rfloor + 1
+                \end{aligned} \]
+                <p style="font-size: 70%;">$R$ - number of replicas</p>
+                <img data-src="assets/majority.png" class="r-stretch">
+
+            </section>
+            <section>
+                <h3>Leader election</h3>
+                <img data-src="assets/raft-vote.png" class="r-stretch">
+
+            </section>
+            <section>
+                <h3>Replication</h3>
+                <img data-src="assets/replication.png" class="r-stretch">
+
+            </section>
+            <section>
+                <h3>Failure Detector</h3>
+                <img data-src="assets/raft_heartbeat.png" class="r-stretch">
+
+            </section>
+            <section data-background-video="assets/redpanda_walk.mp4" data-background-video-loop
+                data-background-video-muted style="height: 100%">
+                <aside class="background-bar">
+                    <h3>Redpanda Raft journey</h3>
+                </aside>
+
+            </section>
+            <section>
+                <h3>Redpanda</h3>
+                <img class="r-stretch" src="assets/Barbell Panda.png">
+                <aside class="notes">
+                    Redpanda the Redpanda.
+                </aside>
+            </section>
+            <section>
+                <h3>Thread per core architecture</h3>
+                <img class='r-stretch' src="assets/tpc.png">
+
+            </section>
+            <section>
+                <h3>Raft protocol summary</h3>
+                <img data-src="assets/raft_table.png" class="r-stretch">
+                <div style="text-align: right; font-style: italic; font-size:12px;">Source: In Search of an
+                    Understandable Consensus Algorithm (D. Ongaro and J. Ousterhout)</div>
+
+            </section>
+            <section>
+                <h3>Redpanda Raft</h3>
+                <div>
+                    <pre data-id="code-animation">
+                    <code class="hljs bash language-bash" data-trim data-line-numbers="4-5|9">
+                        <script type="text/template">
+                            -------------------------------------------------------------------------------
+                            Language                     files          blank        comment           code
+                            -------------------------------------------------------------------------------
+                            C++                             54           2507           2158          16821
+                            C/C++ Header                    43           1352           1870           6445
+                            CMake                            2             10              1            124
+                            JSON                             1              0              0             50
+                            -------------------------------------------------------------------------------
+                            SUM:                           100           3869           4029          23440
+                            -------------------------------------------------------------------------------
+                        </script>
+                    </code>
+                    </pre>
+                </div>
+
+            </section>
+            <section data-background-image="assets/multiple.jpeg">
+                <aside class="background-bar">
+                    <h3>Multiple Rafts</h3>
+                </aside>
+                <aside class="notes">
+                    The first challenge we had to face was to host not one but multiple Raft protocol instances in a
+                    single Redpanda cluster.
+                </aside>
+            </section>
+            <section>
+                <h3>Redpanda Topic</h3>
+                <img class='r-stretch' src="assets/topic_sketch.png">
+
+            </section>
+            <section>
+                <h3>Heartbeats in numbers</h3>
+                <div class="fragment">
+                    \[
+                    \begin{align*}
+                    p &= 30000 \text{ partitions}\\
+                    \end{align*}
+                    \]
+                </div>
+                <div class="fragment">
+                    \[
+                    \begin{align*}
+                    H &= 60000 \text{ heartbeats}\\
+                    \end{align*}
+                    \]
+                </div>
+                <div class="fragment">
+                    \[
+                    \begin{align*}
+                    H_{rate} &= 400000 \text{ rps} \\
+                    \end{align*}
+                    \]
+                </div>
+
+            </section>
+            <section>
+                <h3>Heartbeats Manager</h3>
+                <img data-src="assets/hb_manager.png" class="r-stretch" \>
+
+            </section>
+            <section>
+                <h3>Overwhelmed by scale</h3>
+                <img data-src="assets/hb_prof.png" class="r-stretch">
+
+            </section>
+            <section>
+                <h3>Lightweight heartbeats</h3>
+                <div class="r-stretch container">
+                    <div style="width: 50%">
+                        <img data-src="assets/ae_req.png">
+                        <div style="text-align: left; font-style: italic; font-size:12px;">Source: In Search of an
+                            Understandable Consensus Algorithm (D. Ongaro and J. Ousterhout)</div>
+                    </div>
+                    <div class="fragment" style="width: 50%">
+                        <pre data-id="code-animation">
+                            <code class="hlc++ bash language-c++" data-trim data-line-numbers>
+                                <script type="text/template">
+                                    struct protocol_metadata {
+                                        group_id group;
+                                        model::offset commit_index;
+                                        model::term_id term;
+                                        model::offset prev_log_index;
+                                        model::term_id prev_log_term;
+                                        model::offset last_visible_index;
+                                        model::offset dirty_offset;
+                                    }
+                                </script>
+                            </code>
+                            </pre>
+                    </div>
+                </div>
+            </section>
+            <section>
+                <h3>Lightweight heartbeat</h3>
+                <pre data-id="code-animation">
+                        <code class="hlc++ bash language-c++" data-trim data-line-numbers>
+                            <script type="text/template">                              
+                                    std::vector<group_id> lw_heartbeats;
+                            </script>
+                        </code>
+                </pre>
+
+            </section>
+            <section>
+                <h3>Lightweight heartbeat</h3>
+                <img class="r-stretch" data-src="assets/lw_tasks.png">
+
+            </section>
+            <section>
+                <h3>Raft recovery</h3>
+                <div class="container r-stretch">
+                    <div style="width:50%">
+                        <div>Offline</div>
+                        <img data-src="assets/one_down.png">
+                    </div>
+                    <div class="fragment" style="width:50%">
+                        <span>Back operational</span>
+                        <img data-src="assets/back_alive.png">
+                    </div>
+                </div>
+
+            </section>
+            <section>
+                <h3>Raft recovery - thundering heard problem</h3>
+                <img class="r-stretch" data-src="assets/thundering_heard.jpeg">
+
+            </section>
+            <section>
+                <h3>Coordinated recovery</h3>
+                <img class="r-stretch" data-src="assets/coordinated_recovery.png">
+
+
+            </section>
+            <section>
+                <h3>Coordinated recovery</h3>
+                <pre data-id="code-animation">
+                    <code class="hlc++ bash language-c++" data-trim data-line-numbers="20-26">
+                        <script type="text/template">
+                            struct append_entries_reply {
+                                // node id to validate on receiver
+                                vnode target_node_id;
+                                /// \brief callee's node_id; work-around for batched heartbeats
+                                vnode node_id;
+                                group_id group;
+                                /// \brief callee's term, for the caller to upate itself
+                                model::term_id term;
+                                /// \brief The recipient's last log index after it applied changes to
+                                /// the log. This is used to speed up finding the correct value for the
+                                /// nextIndex with a follower that is far behind a leader
+                                model::offset last_flushed_log_index;
+                                model::offset last_dirty_log_index;
+                                // the last entry base offset used for the recovery speed up, the value is
+                                // only valid for not successful append_entries reply
+                                model::offset last_term_base_offset;
+                                /// \brief did the rpc succeed or not
+                                reply_result result = reply_result::failure;
+                            
+                                // Hint from follower to leader, indicating they are ready for
+                                // recovery traffic 
+                                // (false if they may not have enough resources to handle recovery).
+                                // 
+                                // This is true by default to reflect the legacy case, where
+                                // older nodes are always ready for recovery.
+                                bool may_recover = true;
+                            };
+                        </script>
+                    </code>
+                </pre>
+
+            </section>
+
+            <section data-background-gradient="linear-gradient(to bottom, #fcfcfd, #7d89b0)">
+                <img class="r-stretch" data-src="assets/Panda Builder.png">
+                <aside class="background-bar">
+                    <h3>Reconfiguration</h3>
+                </aside>
+
+            </section>
+            <section>
+                <h3>Learner replicas</h3>
+                <img class="r-stretch" data-src="assets/learner.png">
+
+            </section>
+            <section>
+                <h3>Reconfiguration - joint consensus</h3>
+                <img data-src="assets/joint.png" class="r-stretch">
+
+            </section>
+            <section>
+                <h3>Joint consensus - availability issue</h3>
+                <img data-src="assets/cfg_legend.png" class="r-stretch">
+
+            </section>
+            <section>
+                <h3>Joint consensus - availability issue</h3>
+                <img data-src="assets/r_vulnerable.png" class="r-stretch">
+
+            </section>
+            <section>
+                <h3>Joint consensus - new approach</h3>
+                <img data-src="assets/r_fixed.png" class="r-stretch">
+
+            </section>
+            <section>
+                <h3>Raft snapshots</h3>
+                <img data-src="assets/r_snapshot.png" class="r-stretch">
+
+            </section>
+            <section>
+                <h3>Tiered storage</h3>
+                <img data-src="assets/tiered_storage.png" class="r-stretch">
+
+            </section>
+            <section>
+                <h3>Tiered storage reconfiguration</h3>
+                <img data-src="assets/cs_move.png" class="r-stretch">
+
+            </section>
+            <section>
+                <h3>Fast reconfiguration</h3>
+                <img data-src="assets/fast_move_2.png" class="r-stretch">
+
+            </section>
+            <section data-background-gradient="linear-gradient(to bottom, #fcfcfd, #7d89b0)">
+                <img data-src="assets/Jetpack Panda A1.svg" class="r-stretch" />
+                <aside class="background-bar">
+                    <h3>Performance</h3>
+                </aside>
+
+            </section>
+            <section>
+                <h3>Batching</h3>
+                <img data-src="assets/batching.png" class="r-stretch">
+
+            </section>
+            <section>
+                <h3>Pipelining</h3>
+                <img data-src="assets/pipe.png" class="r-stretch">
+
+            </section>
+            <section>
+                <h3>Key Takeaways</h3>
+                <p>Raft protocol a cornerstone of Redpanda</p>
+                <hr>
+                <p>Raft protocol is well described and relatively easy to understand</p>
+                <hr>
+                <p>It is a long way from research to real life implementation</p>
+                <hr>
+                <p>Ideas to consider when building distributed systems</p>
+                <hr>
+                <p>Creating distributed systems is hard but exciting</p>
+            </section>
+            <section>
+                <h2>Thank you for your attention</h2>
+                <div class="container">
+                    <img style="width:50%" class="r-stretch" data-src="assets/annie-solo.png">
+                    <img style="width:50%" class="r-stretch" data-src="assets/Red Leader B.svg">
+                </div>
+            </section>
+        </div>
+
+    </div>
+
+    <script src="../../dist/reveal.js"></script>
+    <script src="../../plugin/notes/notes.js"></script>
+    <script src="../../plugin/markdown/markdown.js"></script>
+    <script src="../../plugin/highlight/highlight.js"></script>
+    <script src="/plugin/math/math.js"></script>
+    <script>
+        // More info about initialization & config:
+        // - https://revealjs.com/initialization/
+        // - https://revealjs.com/config/
+        Reveal.initialize({
+            hash: true,
+            disableLayout: false,
+            width: "1280",
+            height: "720",
+            //margin: 0,
+            center: true,
+            showSlideNumber: 'all',
+            slideNumber: true,
+            //showNotes: "inline",
+            //minScale: 1,
+            //maxScale: 1,
+            plugins: [RevealMarkdown, RevealHighlight, RevealNotes, RevealMath.KaTeX]
+        });
+    </script>
+</body>
+
+</html>

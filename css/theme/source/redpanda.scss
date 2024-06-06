@@ -1,0 +1,159 @@
+/**
+ * A simple theme for reveal.js presentations, similar
+ * to the default theme. The accent color is darkblue.
+ *
+ * This theme is Copyright (C) 2012 Owen Versteeg, https://github.com/StereotypicalApps. It is MIT licensed.
+ * reveal.js is Copyright (C) 2011-2012 Hakim El Hattab, http://hakim.se
+ */
+
+
+// Default mixins and settings -----------------
+@import "../template/mixins";
+@import "../template/settings";
+// ---------------------------------------------
+
+
+
+// Include theme-specific fonts
+
+@font-face {
+    font-family: 'Calibre';
+    src: url('../font/calibre-regular.woff2') format('woff2'),
+}
+
+@font-face {
+    font-family: 'Patron';
+    src: url('../font/Patron-Regular.otf') format('opentype'),
+}
+
+@font-face {
+    font-family: 'SimpleMono';
+    src: url('../font/SimplonMono-Regular.ttf') format('truetype'),
+}
+
+// Override theme settings (see ../template/settings.scss)
+$mainFont: 'Calibre';
+$mainColor: #000;
+$darkBackground: #111322;
+$headingFont: 'Patron';
+$headingColor: #000;
+$headingTextShadow: none;
+$headingTextTransform: none;
+$backgroundColor: #fff;
+$linkColor: #00008B;
+$linkColorHover: lighten($linkColor, 20%);
+$selectionBackgroundColor: rgba(0, 0, 0, 0.99);
+
+$overlayElementBgColor: 0, 0, 0;
+$overlayElementFgColor: 240, 240, 240;
+
+// Change text colors against dark slide backgrounds
+@include dark-bg-text-color(#fff);
+
+.dark .backgrounds {
+    background-color: $darkBackground;
+}
+
+.dim .backgrounds {
+    filter: blur(4px) saturate(.8) brightness(.4);
+}
+
+// Theme template ------------------------------
+@import "../template/theme";
+// ---------------------------------------------
+
+.horizontal-separator {
+    background-color: $darkBackground;
+    color: #F9F9FB !important;
+    padding-top: 0.2em;
+}
+
+.reveal .slides section .grid-wrapper {
+    box-sizing: border-box;
+    display: grid;
+    grid-template-areas:
+        "header header header"
+        "content content content"
+        ". . credit";
+    grid-template-columns: 10% 80% 10%;
+    grid-template-rows: 6vmin 1fr auto;
+    grid-column-gap: 1vmin;
+    height: 100%;
+    padding: 0vmin;
+}
+
+
+.logo {
+    grid-area: header;
+}
+
+.content {
+    align-self: center;
+    grid-area: content;
+}
+
+.credit {
+    grid-area: credit;
+}
+
+
+
+.inline-image {
+    display: inline-block;
+    *display: inline;
+    /* for older IE */
+    *zoom: 1;
+    /* for older IE */
+}
+
+.layout_overlay {
+    height: 1080px;
+    width: 1920px;
+}
+
+.header {
+    position: relative;
+    top: 61vh;
+    width: 100%;
+    background-color: $darkBackground;
+    height: 100px;
+    padding-left: 1%;
+    display: flex;
+    align-items: center;
+}
+
+
+.spacer {
+    height: 100%;
+    width: 10%;
+    background-color: $darkBackground;
+    align-items: center;
+}
+
+// Hide background bar content
+.reveal aside.background-bar {
+    display: none;
+}
+
+.horizontal-background-bar {
+    position: relative;
+    bottom: 0;
+    background-color: $darkBackground;
+    color: #f9f9f9;
+}
+
+.horizontal-background-bar h3 {
+    color: #f9f9f9 !important;
+    vertical-align: middle;
+    padding-left: 0.4em;
+    padding-top: 0.2em;
+    padding-bottom: 0.2em;
+    bottom: 100px;
+    display: flex;
+}
+
+
+.container {
+    display: flex;
+    flex-flow: row
+}
