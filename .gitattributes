@@ -1,0 +1,2 @@
+*.mp4 filter=lfs diff=lfs merge=lfs -text
+slides/jotb_raft/assets/redpanda_walk.mp4 filter=lfs diff=lfs merge=lfs -text
